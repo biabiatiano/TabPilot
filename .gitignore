@@ -1,0 +1,38 @@
+# ── TabPilot — Git Ignore ──────────────────────────
+# 忽略与源码无关的产物、系统文件与本地配置。
+
+# 依赖（本插件纯 vanilla JS，无运行时依赖，此条仅为扩展预留）
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 构建产物
+dist/
+build/
+output/
+*.zip
+
+# 系统 / 编辑器文件
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+yarn-error.log*
+tmp/
+/tmp/
+*.tmp
+
+# 本地环境与密钥（切勿提交真实凭据）
+.env
+.env.*
+*.pem
+*.key

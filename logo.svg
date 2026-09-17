@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220" fill="none">
+  <!-- 蓝色页签（后左） -->
+  <path d="M44 92 h58 a10 10 0 0 1 10 10 v58 a10 10 0 0 1 -10 10 H44 a10 10 0 0 1 -10 -10 V102 a10 10 0 0 1 10 -10 z" fill="#4285F4"/>
+  <!-- 绿色页签（后右） -->
+  <path d="M108 56 h58 a10 10 0 0 1 10 10 v58 a10 10 0 0 1 -10 10 h-58 a10 10 0 0 1 -10 -10 V66 a10 10 0 0 1 10 -10 z" fill="#34A853"/>
+  <!-- 黄色页签（前中） -->
+  <path d="M80 106 h60 a10 10 0 0 1 10 10 v48 a10 10 0 0 1 -10 10 H80 a10 10 0 0 1 -10 -10 v-48 a10 10 0 0 1 10 -10 z" fill="#FBBC05"/>
+  <!-- 放大镜 -->
+  <circle cx="122" cy="118" r="30" fill="#fff"/>
+  <circle cx="122" cy="118" r="30" stroke="#EA4335" stroke-width="12"/>
+  <circle cx="122" cy="118" r="9" fill="#EA4335"/>
+  <line x1="144" y1="144" x2="168" y2="166" stroke="#EA4335" stroke-width="16" stroke-linecap="round"/>
+</svg>

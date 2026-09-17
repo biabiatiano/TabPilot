@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TabPilot 快速切换</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── 左上角 GitHub 角标 ───────────────────── */
+    .fork-link {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 50;
+      width: 96px;
+      height: 96px;
+      display: block;
+      overflow: hidden;
+      opacity: .9;
+      transition: opacity .2s;
+    }
+
+    .fork-link:hover { opacity: 1; }
+
+    .fork-link img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 确保 hidden 属性不被 display:flex 覆盖 */
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: #f6f8fa;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── 右上角帮助链接 ─────────────────────── */
+    .top-links {
+      position: absolute;
+      top: 18px;
+      right: 24px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .help-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font: inherit;
+      color: #3c4043;
+      background: #fff;
+      border: 1px solid transparent;
+      border-radius: 24px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+
+    .help-link:hover {
+      background: #f1f3f4;
+      border-color: #dadce0;
+    }
+
+    /* ── 轻提示 toast ───────────────────────── */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 40px;
+      transform: translateX(-50%);
+      max-width: 80vw;
+      padding: 10px 18px;
+      font-size: 14px;
+      color: #fff;
+      background: rgba(32, 33, 36, .92);
+      border-radius: 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .toast.show { opacity: 1; }
+
+    /* ── 主体 ─────────────────────────────── */
+    .main {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 8vh 24px 40px;
+    }
+
+    .logo {
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      user-select: none;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* ── 输入框 + 下拉 ─────────────────────── */
+    .search-box {
+      position: relative;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 15px 44px 15px 20px;
+      font-size: 16px;
+      color: #202124;
+      background: #fff;
+      border: 1px solid #dfe1e5;
+      border-radius: 24px;
+      box-shadow: none;
+      outline: none;
+      transition: box-shadow .2s, border-color .2s;
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: #f1f3f4;
+      border-radius: 50%;
+      color: #5f6368;
+      cursor: pointer;
+      padding: 0;
+      transition: background .15s, color .15s;
+    }
+
+    .search-clear:hover { background: #e8eaed; color: #202124; }
+
+    .search-clear svg { width: 16px; height: 16px; }
+
+    .search-box input:hover {
+      box-shadow: 0 1px 6px rgba(32,33,36,.18);
+      border-color: rgba(223,225,229,0);
+    }
+
+    .search-box input:focus {
+      box-shadow: 0 1px 6px rgba(32,33,36,.28);
+      border-color: rgba(223,225,229,0);
+    }
+
+    .dropdown {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 20;
+      display: none;
+      max-height: 340px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #dfe1e5;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(32,33,36,.18);
+      padding: 6px 0;
+    }
+
+    .dropdown.show { display: block; }
+
+    .dropdown .dd-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+
+    .dropdown .dd-item:hover,
+    .dropdown .dd-item.active {
+      background: #f1f3f4;
+    }
+
+    .dropdown .dd-item img {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      border-radius: 4px;
+    }
+
+    .dropdown .dd-item .info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dropdown .dd-item .t {
+      font-size: 14px;
+      color: #202124;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dropdown .dd-item .u {
+      font-size: 12px;
+      color: #80868b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── 快速备选卡片 ───────────────────────── */
+    .quick-cards {
+      width: 100%;
+      max-width: 620px;
+      margin-top: 14px;
+    }
+
+    .qc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .qc-header .qc-ttl {
+      font-size: 13px;
+      font-weight: 600;
+      color: #5f6368;
+    }
+
+    .qc-header .qc-edit-toggle {
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #80868b;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .qc-header .qc-edit-toggle:hover { background: #f1f3f4; color: #202124; }
+
+    .qc-view {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .qc-chip {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+      min-height: 62px;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid #dadce0;
+      border-radius: 14px;
+      color: #3c4043;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(60,64,67,.08);
+      transition: box-shadow .18s, border-color .18s, transform .12s;
+    }
+
+    .qc-chip:hover {
+      box-shadow: 0 4px 14px rgba(60,64,67,.16);
+      border-color: #1a73e8;
+    }
+
+    .qc-chip:active { transform: translateY(1px); }
+
+    .qc-chip .lbl {
+      font-size: 15px;
+      font-weight: 600;
+      color: #202124;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .qc-chip .val {
+      font-size: 12px;
+      color: #5f6368;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .qc-empty { font-size: 13px; color: #9aa0b0; }
+
+    .qc-edit { display: flex; flex-direction: column; gap: 8px; }
+
+    .qc-edit-row { display: flex; align-items: center; gap: 6px; }
+
+    .qc-edit-row input {
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #202124;
+      border: 1px solid #dfe1e5;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .qc-edit-row input:focus { border-color: #1a73e8; }
+
+    .qc-edit-row .lbl-input { flex: 0 0 120px; }
+
+    .qc-edit-row .val-input { flex: 1; min-width: 0; }
+
+    .qc-ico {
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #5f6368;
+      padding: 4px 6px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .qc-ico:hover { background: #f1f3f4; color: #202124; }
+    .qc-ico.del:hover { color: #d93025; background: #fce8e6; }
+
+    .qc-edit-footer { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+
+    .qc-add {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px dashed #d0d0d0;
+      border-radius: 20px;
+      background: none;
+      color: #5f6368;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .qc-add:hover { border-color: #1a73e8; color: #1a73e8; }
+    .qc-add:disabled { opacity: .4; cursor: not-allowed; }
+
+    .qc-done {
+      margin-left: auto;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      background: #1a73e8;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+    }
+
+    .qc-done:hover { background: #1b66c9; }
+
+    /* ── 帮助浮窗 ─────────────────────────── */
+    .modal-mask {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-mask.show { display: flex; }
+
+    .modal {
+      width: auto;
+      min-width: 760px;
+      max-width: 90vw;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+      padding: 32px 40px;
+    }
+
+    .modal h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 18px;
+    }
+
+    .modal ol {
+      margin: 0;
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modal li {
+      font-size: 16px;
+      line-height: 1.9;
+      color: #3c4043;
+      white-space: nowrap;
+    }
+
+    .modal li b { color: #1a73e8; font-weight: 600; }
+
+    .modal li a {
+      color: #1a68d8;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .modal li a:hover { color: #174ea6; }
+
+    .modal .modal-close {
+      margin-top: 22px;
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: #1a73e8;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .modal .modal-close:hover { background: #1b66c9; }
+
+    /* ── 顶部星形跳转按钮 ───────────────────── */
+    .top-star {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid transparent;
+      border-radius: 50%;
+      background: none;
+      color: #5f6368;
+      cursor: pointer;
+      transition: color .2s, background .2s, border-color .2s;
+    }
+
+    .top-star:hover { color: #f5a623; background: #f1f3f4; border-color: #dadce0; }
+    .top-star.active { color: #f5a623; }
+
+    /* ── 下拉项星标按钮 ─────────────────────── */
+    .dropdown .dd-item .star-btn {
+      opacity: 0;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      color: #5f6368;
+      cursor: pointer;
+      padding: 0;
+      transition: opacity .15s, color .15s, background .15s, transform .15s;
+    }
+
+    .dropdown .dd-item:hover .star-btn,
+    .dropdown .dd-item .star-btn.starred { opacity: 1; }
+
+    .dropdown .dd-item .star-btn:hover {
+      color: #f5a623;
+      background: rgba(245,166,35,.14);
+      transform: scale(1.12);
+    }
+
+    .dropdown .dd-item .star-btn.starred { color: #f5a623; }
+    .dropdown .dd-item .star-btn.starred:hover { color: #d93025; background: rgba(217,48,37,.1); }
+
+    /* ── 更新日志 ───────────────────────────── */
+    .changelog-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      color: #3c4043;
+      background: #fff;
+      border: 1px solid #dadce0;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+
+    .changelog-chip:hover { background: #f1f3f4; border-color: #dadce0; }
+
+    .changelog-chip .chip-ver {
+      font-weight: 600;
+      color: #1a73e8;
+    }
+
+    .changelog-chip svg {
+      width: 12px;
+      height: 12px;
+      color: #5f6368;
+    }
+
+    /* 更新日志浮窗内容 */
+    .modal-cl { min-width: 620px; }
+
+    .cl-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .cl-head h2 { margin-bottom: 0; }
+
+    .cl-close {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 50%;
+      background: none;
+      color: #5f6368;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+
+    .cl-close:hover { background: #f1f3f4; color: #202124; }
+
+    .cl-versions {
+      display: flex;
+      flex-direction: column;
+      max-height: 46vh;
+      overflow-y: auto;
+    }
+
+    .cl-ver {
+      padding: 16px 0;
+      border-bottom: 1px solid #e8eaed;
+    }
+
+    .cl-ver:first-child { padding-top: 4px; }
+    .cl-ver:last-child { border-bottom: none; }
+
+    .cl-ver-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .cl-ver-chip {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a68d8;
+      background: #e8f0fe;
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+
+    .cl-ver-date { font-size: 12px; color: #80868b; }
+
+    .cl-ver-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      background: #1a73e8;
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+
+    .cl-items {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cl-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #3c4043;
+    }
+
+    .cl-tag {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 1px 7px;
+      margin-top: 3px;
+    }
+
+    .cl-tag-new { color: #1a68d8; background: #e8f0fe; }
+    .cl-tag-fix, .cl-tag-imp { color: #5f6368; background: #f1f3f4; }
+
+    .cl-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .cl-gh-link {
+      font-size: 13px;
+      color: #1a68d8;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .cl-gh-link:hover { text-decoration: underline; }
+
+    .cl-done {
+      padding: 10px 26px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: #1a73e8;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .cl-done:hover { background: #1b66c9; }
+
+    /* ── GitHub 入口组 ───────────────────────── */
+    .gh-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .gh-group .help-link {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    /* ── 页脚 ───────────────────────────────── */
+    .page-footer {
+      width: 100%;
+      max-width: 620px;
+      margin: 20px auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 24px;
+      font-size: 12px;
+      color: #80868b;
+    }
+
+    .page-footer a {
+      color: #1a68d8;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .page-footer a:hover { text-decoration: underline; }
+
+    /* ── 一句话定位 ───────────────────────── */
+    .tagline {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 14px;
+      color: #5f6368;
+      letter-spacing: .3px;
+    }
+
+    /* ── 核心特性列表 ─────────────────────── */
+    .features {
+      width: 100%;
+      max-width: 620px;
+      margin: 6px auto 0;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 16px;
+      background: #f8f9fa;
+      border: 1px solid transparent;
+      border-radius: 12px;
+    }
+
+    .feature-icon {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-radius: 50%;
+    }
+
+    .feature-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .feature-text strong {
+      font-size: 13px;
+      color: #202124;
+    }
+
+    .feature-text span {
+      font-size: 11.5px;
+      color: #5f6368;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 560px) {
+      .features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a id="fork-link" class="fork-link" href="https://github.com/biabiatiano/TabPilot/fork" target="_blank" rel="noopener" title="Fork TabPilot">
+    <img src="forkme.png" alt="Fork me on GitHub" />
+  </a>
+  <div class="top-links">
+    <button type="button" id="index-star-btn" class="top-star" title="暂无标星的页面，请在下拉中给某页点星">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    </button>
+    <span class="gh-group">
+      <a class="help-link" id="gh-repo" href="#" role="button" title="GitHub 仓库">仓库</a>
+      <a class="help-link" id="gh-issues" href="#" role="button" title="提交 Issue">Issues</a>
+      <a class="help-link" id="gh-star" href="#" role="button" title="给项目点 Star">Star</a>
+    </span>
+    <button type="button" id="changelog-btn" class="changelog-chip" title="查看更新日志">
+      <span>更新日志</span>
+      <span class="chip-ver">v<span id="cl-ver-label"></span></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <a class="help-link" id="help-link" href="#" role="button">
+      使用帮助
+    </a>
+  </div>
+
+  <main class="main">
+    <div class="logo">
+      <img
+        src="logo.svg"
+        alt="TabPilot"
+        draggable="false"
+      />
+    </div>
+    <p class="tagline">快速切换浏览器页签 · 标星常用页面 · 快捷键随时唤起</p>
+
+    <div class="search-box">
+      <input type="text" id="query" placeholder="输入文字或网址…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <button type="button" id="search-clear" class="search-clear" title="清除" hidden aria-label="清除">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+
+    <!-- 快速备选卡片 -->
+    <div class="quick-cards">
+      <div class="qc-header">
+        <span class="qc-ttl">快速备选</span>
+        <button class="qc-edit-toggle" id="qc-edit-toggle" title="管理卡片">✎</button>
+      </div>
+      <div class="qc-view" id="qc-view"></div>
+      <div class="qc-edit" id="qc-edit" hidden></div>
+    </div>
+  </main>
+
+  <!-- 核心特性列表 -->
+  <section class="features">
+    <div class="feature-item">
+      <span class="feature-icon">⌨</span>
+      <div class="feature-text">
+        <strong>快捷键唤起</strong>
+        <span>Alt+P 打开快速启动页 · Alt+K 跳转标星页</span>
+      </div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">⭐</span>
+      <div class="feature-text">
+        <strong>标星常用页面</strong>
+        <span>下拉中 Alt+L 快速打星，一键回到重要页面</span>
+      </div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">🔒</span>
+      <div class="feature-text">
+        <strong>本地优先</strong>
+        <span>所有数据仅保存在本地，不上传任何服务器</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚：隐私声明 + 开源协议 -->
+  <footer class="page-footer">
+    <span class="footer-privacy">🔒 所有数据仅保存在本地浏览器，不会上传到任何服务器</span>
+    <span class="footer-license">
+      开源协议 <a id="license-link" href="#" role="button">MIT License</a>
+    </span>
+  </footer>
+
+  <!-- 帮助浮窗 -->
+  <div class="modal-mask" id="help-modal">
+    <div class="modal">
+      <h2>使用帮助</h2>
+      <ol>
+        <li>在输入框中<b>输入文字或网址</b>，下方会实时展示浏览器已打开的、与之匹配的页签。</li>
+        <li>使用 <b>鼠标点击</b> 或 <b>↑/↓ 键</b> 选中某个下拉项，按 <b>Enter</b> 即可跳转到对应页签。</li>
+        <li>若输入的是<b>网址</b>且当前没有匹配的页签，按 <b>Enter</b> 会用新页签打开该网址。</li>
+        <li>按 <b>Esc</b> 可收起下拉列表。</li>
+        <li>按 <b>Alt+P</b> 可随时打开本快速启动页（可到 <a id="shortcuts-link" href="#" title="打开快捷键设置页面">chrome://extensions/shortcuts</a> 自定义快捷键）。</li>
+        <li>按 <b>Alt+K</b> 可一键跳转到你标星的页面（在弹窗中给某标签页点星后即可生效）。</li>
+        <li>在本页下拉中选中某个页签后，按 <b>Alt+L</b> 可对该页执行<b>标星/取消标星</b>。</li>
+      </ol>
+      <button class="modal-close" id="modal-close">知道了</button>
+    </div>
+  </div>
+
+  <!-- 更新日志浮窗 -->
+  <div class="modal-mask" id="changelog-modal">
+    <div class="modal modal-cl">
+      <div class="cl-head">
+        <h2>更新日志</h2>
+        <button type="button" class="cl-close" id="cl-close" title="关闭">✕</button>
+      </div>
+      <div class="cl-versions" id="cl-versions">
+        <!-- 由 index.js 渲染版本条目 -->
+      </div>
+      <div class="cl-foot">
+        <a class="cl-gh-link" id="cl-gh-link" href="#" role="button">在 GitHub 查看完整更新 →</a>
+        <button class="cl-done" id="cl-done">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="index.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "TabPilot",
+  "version": "1.0.0",
+  "description": "Quickly view and switch between open tabs with a clean popup interface.",
+  "permissions": ["tabs", "storage"],
+  "incognito": "split",
+  "content_security_policy": {
+    "extension_pages": "img-src 'self' chrome://favicon/ data: https: http:; script-src 'self'"
+  },
+  "externally_connectable": {
+    "matches": ["<all_urls>"]
+  },
+  "commands": {
+    "open-index": {
+      "suggested_key": {
+        "default": "Alt+P",
+        "mac": "Alt+P"
+      },
+      "description": "Open the TabPilot quick-launch page (index.html)"
+    },
+    "go-to-starred": {
+      "suggested_key": {
+        "default": "Alt+K",
+        "mac": "Alt+K"
+      },
+      "description": "Go to the starred tab"
+    }
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
