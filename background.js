@@ -32,8 +32,56 @@ chrome.commands.onCommand.addListener((command) => {
     chrome.storage.local.get('starredTabId', ({ starredTabId }) => {
       if (starredTabId) switchToStarredTab(starredTabId, null);
     });
+  } else if (command === 'set-starred') {
+    // 快捷键将当前活动页签设为星标页面。
+    setStarredFromShortcut();
   }
 });
+
+// ── Alt+L: toggle the currently active tab as the starred tab ──
+async function setStarredFromShortcut() {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    const tab = tabs && tabs.length ? tabs[0] : null;
+    if (!tab) return;
+    if (tab.id == null) return; // e.g. the new-tab page has no id
+    // 焦点在 index 页面时，通知页面对其下拉选中项执行标星/取消（交由页面内处理）
+    if (tab.url === chrome.runtime.getURL('index.html')) {
+      chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_DROPDOWN_STAR' }).catch(() => {});
+      return;
+    }
+
+    const { starredTabId } = await chrome.storage.local.get('starredTabId');
+    const label = tab.title ? `「${truncate(tab.title, 40)}」` : '当前页签';
+    if (starredTabId === tab.id) {
+      // 已标星则取消
+      await chrome.storage.local.set({ starredTabId: null });
+      showSuccessNotification('已取消标星', label);
+    } else {
+      // 否则标记为星标
+      await chrome.storage.local.set({ starredTabId: tab.id });
+      showSuccessNotification('已标记为星标', label);
+    }
+  } catch (err) {
+    console.error('[TabPilot] set-starred failed:', err);
+  }
+}
+
+// ── System notification ───────────────────────
+function showSuccessNotification(title, message) {
+  chrome.notifications.create('', {
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+    title,
+    message,
+    priority: 1,
+  });
+}
+
+function truncate(str, maxLen) {
+  if (!str) return '';
+  return str.length > maxLen ? str.slice(0, maxLen) + '…' : str;
+}
 
 // ── Port Handler (for external web pages) ──────
 // External pages open a long-lived port; the service worker

@@ -65,6 +65,16 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   render(currentList);
 });
 
+// 全局快捷键 Alt+L 由 background 命令统一截获；当焦点在本页时，
+// background 发送 TOGGLE_DROPDOWN_STAR，对的当前下拉选中项标星/取消。
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'TOGGLE_DROPDOWN_STAR') {
+    if (activeIndex >= 0 && currentList[activeIndex]) {
+      toggleStarTab(currentList[activeIndex].id);
+    }
+  }
+});
+
 // 点击清除按钮 → 快速清空输入框并收起下拉
 clearBtn.addEventListener('click', () => {
   input.value = '';
@@ -284,16 +294,8 @@ input.addEventListener('input', async () => {
 });
 
 input.addEventListener('keydown', (e) => {
-  // Alt+L：对下拉中被选中的页签执行标星/取消标星
-  // 用 e.code 判断物理按键，避免 macOS 上 Option+L 组合出 "¬" 导致 e.key 不是 'l' 而失配；
-  // 无论有无选中项都 preventDefault，防止特殊符号被插入输入框。
-  if (e.altKey && e.code === 'KeyL') {
-    e.preventDefault();
-    if (activeIndex >= 0 && currentList[activeIndex]) {
-      toggleStarTab(currentList[activeIndex].id);
-    }
-    return;
-  }
+  // Alt+L 已注册为全局命令，此处不会收到该按键；
+  // 由 background 收到命令后通过 TOGGLE_DROPDOWN_STAR 消息回调本页处理（见下方 onMessage）。
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
@@ -559,6 +561,15 @@ chrome.runtime.onMessage.addListener((message) => {
 
 const CHANGELOG_FALLBACK = [
   {
+    version: '1.0.1',
+    date: '2026-09-18',
+    items: [
+      { tag: 'new', text: 'Alt+L：在普通页面快速标星/取消当前页签（系统通知提示）；下拉中选中某项亦可标星/取消' },
+      { tag: 'new', text: '打开快速启动页时若已存在该页签则直接选中，不再重复新建' },
+      { tag: 'fix', text: '修复页脚开源协议链接指向错误' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-09-17',
     items: [
@@ -566,7 +577,7 @@ const CHANGELOG_FALLBACK = [
       { tag: 'new', text: '快速备选卡片与使用帮助' },
       { tag: 'new', text: 'Alt+P 快捷打开快速启动页' },
       { tag: 'new', text: 'Alt+K 一键跳转到标星页面' },
-      { tag: 'new', text: 'Alt+L 对下拉选中页签快速标星 / 取消标星' },
+      { tag: 'new', text: 'Alt+L：下拉中选中某项标星/取消；在普通页面则标记/取消当前页签为星标' },
       { tag: 'new', text: '标星状态在 index / popup 间实时同步' },
       { tag: 'imp', text: '弹出页标星页签，顶部星标图标一键跳转' },
     ],
@@ -682,7 +693,7 @@ const ghLinks = {
   'gh-repo': GH_BASE,
   'gh-issues': GH_BASE + '/issues',
   'gh-star': GH_BASE + '/stargazers',
-  'license-link': 'https://github.com/biabiatiano/TabPilot/LICENSE',
+  'license-link': 'https://github.com/biabiatiano/TabPilot/blob/main/LICENSE',
 };
 for (const [id, url] of Object.entries(ghLinks)) {
   const el = document.getElementById(id);

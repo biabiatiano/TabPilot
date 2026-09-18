@@ -40,9 +40,9 @@ A lightweight Chrome browser extension (Manifest V3) that lets you **browse all 
 - **跳转方式**：鼠标点击、`↑/↓` + `Enter` 均能跳转到选中页签（跳转后自动清空输入框）。
 - **网址直达**：输入网址且无匹配页签时，按 `Enter` 用新页签打开。
 - **快速备选卡片**：最多自定义 6 张卡片，每张可设置「名称 + 内容/网址」并调整顺序；点击卡片写入搜索框，仅一项匹配时直接打开。
-- **添加到收藏**：一键把当前页面加入浏览器书签。
-- **问题反馈 & 使用帮助**：右上角提供邮件反馈入口与使用帮助浮窗。
-- **键盘快捷键**：默认按 `Alt+P` 随时呼出快速启动页。
+- **星标常用页面**：唯一标星页签，popup / index 均可标记或一键跳转，状态实时同步。
+- **反馈 & 使用帮助**：右上角提供 GitHub 仓库 / Issues / Star 入口与使用帮助浮窗。
+- **键盘快捷键**：`Alt+P` 随时呼出快速启动页；`Alt+K` 一键跳转标星页；`Alt+L` 快速标星/取消。
 
 ### Bridge — 外部页面联动
 - 通过 `chrome.runtime.onConnectExternal` / `onMessage`，**任意网页**可在知道扩展 ID 的情况下触发指定页签切换。
@@ -82,7 +82,7 @@ A lightweight Chrome browser extension (Manifest V3) that lets you **browse all 
 - **跳转页签**：输入文字或网址，在下拉中选择后按 `Enter` 或直接点击。
 - **键盘操作**：`↑/↓` 选择、`Enter` 确认、`Esc` 收起下拉。
 - **快速卡片**：点击卡片填入搜索内容；仅一项匹配时自动打开；编辑模式下可增删改、调整顺序。
-- **快捷键**：按 `Alt+P` 随时打开本页（可在 `chrome://extensions/shortcuts` 自定义）。
+- **快捷键**：`Alt+P` 随时打开本页；`Alt+K` 一键跳转到标星页面；`Alt+L` 对下拉选中项或当前所在页签快速标星/取消（可在 `chrome://extensions/shortcuts` 自定义）。
 
 ---
 
@@ -124,7 +124,7 @@ node --check index.js
 ### 权限说明
 - `tabs`：读取页签标题/URL、切换/关闭页签。
 - `storage`：持久化星标页签与快速备选卡片。
-- `bookmarks`：`添加到收藏` 功能直接创建书签。
+- `notifications`：`Alt+L` 标星/取消时弹出系统通知。
 
 ---
 

@@ -89,9 +89,17 @@ function initStarBtn() {
 
 function initDemoBtn() {
   const btn = document.getElementById('demo-btn');
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const url = chrome.runtime.getURL('index.html');
-    chrome.tabs.create({ url });
+    // If the index page is already open, activate it; otherwise create a new tab.
+    const tabs = await chrome.tabs.query({ url });
+    const existing = tabs && tabs.length ? tabs[0] : null;
+    if (existing) {
+      await chrome.tabs.update(existing.id, { active: true, highlighted: true });
+      await chrome.windows.update(existing.windowId, { focused: true });
+    } else {
+      await chrome.tabs.create({ url });
+    }
     window.close(); // close the popup
   });
 }
